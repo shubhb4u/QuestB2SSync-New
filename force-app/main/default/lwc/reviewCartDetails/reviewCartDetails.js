@@ -52,42 +52,44 @@ export default class ReviewCartDetails extends NavigationMixin(LightningElement)
 
     // Checkout data -- 
 
-    @wire(CheckoutInformationAdapter, {})
+    @wire(CheckoutInformationAdapter)
     checkoutInfo({ error, data }) {
         if (data) {
             this.checkoutId = data.checkoutId;
-            console.log("this.checkoutId-->>: " + this.checkoutId);
-            this.shippingAddress = this.cartDetails.shippingAddress;
-            console.log("shippingAddress-->> " + this.shippingAddress);
+            this.shippingAddress = this.cartDetails?.shippingAddress; // Check if cartDetails exists
+            // console.log("Checkout ID:", this.checkoutId);
+            // console.log("Shipping Address:", this.shippingAddress);
         } else if (error) {
-            console.log("##simplePurchaseOrder checkoutInfo Error: " + error);
+            console.error("CheckoutInfo Error:", error);
         }
     }
 
 
     @api
     async paymentProcess() {
-
-        await this.completePayment();
-
-        // const orderConfirmation = await this.dispatchPlaceOrderAsync();
-
-        // if (orderConfirmation.orderReferenceNumber) {
-        //     refreshCartSummary();
-        //     this.navigateToOrder(orderConfirmation.orderReferenceNumber);
-        //     console.log('simplePurchaseOrder orderReferenceNumber: '+orderConfirmation.orderReferenceNumber);
-        // } else {
-        //     throw new Error("Required orderReferenceNumber is missing");
-        // }
+        try {
+            await this.completePayment();  
+            refreshCartSummary();
+        } catch (error) {
+            console.error("Payment Process Error:", error);
+            // Add error handling logic here if necessary
+        }
     }
 
     @api
-    async completePayment(){
-        let address = this.shippingAddress;
-        const purchaseOrderInputValue = this.storedPONumber;
+    async completePayment() {
+        if (!this.checkoutId || !this.storedPONumber) {
+            throw new Error("Missing checkoutId or PO Number");
+        }
 
-        let po = await simplePurchaseOrderPayment(this.checkoutId, purchaseOrderInputValue, address);
-        return po;
+        try {
+            const po = await simplePurchaseOrderPayment(this.checkoutId, this.storedPONumber, this.shippingAddress);
+            console.log('Payment processed:', po);
+            return po;
+        } catch (error) {
+            console.error("Payment Error:", error);
+            throw error;  // Re-throw to handle in paymentProcess
+        }
     }
 
 
@@ -298,3 +300,5 @@ export default class ReviewCartDetails extends NavigationMixin(LightningElement)
     }
 
 }
+
+useCheckoutComponent(ReviewCartDetails);
